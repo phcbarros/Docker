@@ -312,3 +312,155 @@ docker image push phcbarros/simple-build:1.0
 
 Docker Registry é um serviço server-side para registro e obtenção de imagens
 Docker Hub (SaaS) é um produto na nuvem disponibilizado pelo Docker que possui um sistema de registry com uma interface gráfica e disponibiliza imagens oficiais criadas e mantidas pelos times do Docker
+
+## Redes
+
+Cada container tem sua interface de rede (com seu endereço IP) e o Docker criar uma bridge (modelo padrão) para se comunicar com o host e acessar a internet.
+
+### Tipos de rede
+
+- None Network
+- Bridge Network (padrão)
+- Host Network
+- Overly Network (Swarm)
+
+```bash
+docker network ls
+
+docker network inspect bridge
+```
+
+### None Network
+
+Sem conectividade de rede, o container fica totalmente isolado do mundo externo e não acessa os outros containers.
+
+```bash
+# com rede
+docker container run --rm alpine ash -c "ifconfig"
+
+# resultado da execução
+# eth0      Link encap:Ethernet  HWaddr 02:42:AC:11:00:02  
+#           inet addr:172.17.0.2  Bcast:172.17.255.255  Mask:255.255.0.0
+#           UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
+#           RX packets:2 errors:0 dropped:0 overruns:0 frame:0
+#           TX packets:0 errors:0 dropped:0 overruns:0 carrier:0
+#           collisions:0 txqueuelen:0 
+#           RX bytes:200 (200.0 B)  TX bytes:0 (0.0 B)
+
+# lo        Link encap:Local Loopback  
+#           inet addr:127.0.0.1  Mask:255.0.0.0
+#           UP LOOPBACK RUNNING  MTU:65536  Metric:1
+#           RX packets:0 errors:0 dropped:0 overruns:0 frame:0
+#           TX packets:0 errors:0 dropped:0 overruns:0 carrier:0
+#           collisions:0 txqueuelen:1000 
+#           RX bytes:0 (0.0 B)  TX bytes:0 (0.0 B)
+
+
+# sem rede
+docker container run --rm --net none  alpine ash -c "ifconfig"
+
+# resultado da execução
+#lo  Link encap:Local Loopback  
+#    inet addr:127.0.0.1  Mask:255.0.0.0
+#    UP LOOPBACK RUNNING  MTU:65536  Metric:1
+#    RX packets:0 errors:0 dropped:0 overruns:0 frame:0
+#    TX packets:0 errors:0 dropped:0 overruns:0 carrier:0
+#    collisions:0 txqueuelen:1000 
+#    RX bytes:0 (0.0 B)  TX bytes:0 (0.0 B)
+```
+
+### Bridge Network (padrão)
+
+Cria uma camada bridge de isolamento da rede do container com a máquina host, essa camada é gerenciada pelo Docker
+
+```bash
+# container 1
+docker container run -d --name container1 alpine sleep 1000
+docker container exec -it container1 ifconfig
+
+# container 2
+docker container run -d --name container1 alpine sleep 1000
+docker container exec -it container1 ifconfig
+
+# executando um ping do container1 no ip do container2
+docker container exec -it container1 ping 172.17.0.3 
+
+# executando um ping do container1 para um site externo
+docker container exec -it container1 ping www.google.com 
+```
+
+Obs.: Um container criado em uma rede não consegue tem acesso a containers de outra rede
+
+### Criando uma nova rede
+
+```bash
+## create --driver [tipo da rede] [nome da rede]
+docker network create --driver bridge rede_nova
+
+docker network inspect rede_nova
+
+# pode usar o inspect para descobrir o ip do container
+docker container inspect container1   
+
+# cria o container3 usando a rede rede_nova
+docker container run -d --name container3 --net rede_nova alpine sleep 1000
+
+# não consegue se conectar ao container1
+docker container exec -it container3 ping 172.17.0.2
+
+#
+docker container exec -it container3 ifconfig
+
+# resultado da execução
+# eth0      Link encap:Ethernet  HWaddr 02:42:AC:12:00:02  
+#           inet addr:172.18.0.2  Bcast:172.18.255.255  Mask:255.255.0.0
+#           UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
+#           RX packets:19 errors:0 dropped:0 overruns:0 frame:0
+#           TX packets:20 errors:0 dropped:0 overruns:0 carrier:0
+#           collisions:0 txqueuelen:0 
+#           RX bytes:1574 (1.5 KiB)  TX bytes:1904 (1.8 KiB)
+
+# eth1      Link encap:Ethernet  HWaddr 02:42:AC:11:00:03  
+#           inet addr:172.17.0.3  Bcast:172.17.255.255  Mask:255.255.0.0
+#           UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
+#           RX packets:17 errors:0 dropped:0 overruns:0 frame:0
+#           TX packets:7 errors:0 dropped:0 overruns:0 carrier:0
+#           collisions:0 txqueuelen:0 
+#           RX bytes:1370 (1.3 KiB)  TX bytes:574 (574.0 B)
+
+# lo        Link encap:Local Loopback  
+#           inet addr:127.0.0.1  Mask:255.0.0.0
+#           UP LOOPBACK RUNNING  MTU:65536  Metric:1
+#           RX packets:0 errors:0 dropped:0 overruns:0 frame:0
+#           TX packets:0 errors:0 dropped:0 overruns:0 carrier:0
+#           collisions:0 txqueuelen:1000 
+#           RX bytes:0 (0.0 B)  TX bytes:0 (0.0 B)
+```
+
+Conectando a rede bridge
+
+```bash
+# connect [nome da rede] [nome do container]
+docker network connect bridge container3 
+
+# agora consegue se conectar ao container1
+docker container exec -it container3 ping 172.17.0.2
+```
+
+desconectando a rede bridge
+
+```bash
+# disconnect [nome da rede] [nome do container]
+docker network disconnect bridge container3 
+
+# agora consegue se conectar ao container1
+docker container exec -it container3 ping 172.17.0.2
+```
+
+### Host Network
+
+Sem ter a bridge para fazer interface com a máquina host, nível de proteção menor do que da do modo bridge mas com maior velocidade de acesso por não ter uma camada a mais
+
+```bash
+docker container run -d --name container4 --net host alpine sleep 1000
+```
