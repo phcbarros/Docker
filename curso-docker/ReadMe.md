@@ -464,3 +464,15 @@ Sem ter a bridge para fazer interface com a máquina host, nível de proteção 
 ```bash
 docker container run -d --name container4 --net host alpine sleep 1000
 ```
+
+## Docker compose
+
+```bash
+docker-compose up
+docker-compose up -d
+docker-compose down
+docker-compose ps
+
+# executando um comando dentro do serviço db
+docker-compose exec db psql -U postgres -c '\l'
+```
