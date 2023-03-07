@@ -478,4 +478,7 @@ docker-compose exec db psql -U postgres -c '\l'
 
 # lista de banco de dados, se conecta ao banco de dados email_sender e lista o conteúdo da tabela emails
 docker-compose exec db psql -U postgres -f /scripts/check.sql
+
+# logs
+docker-compose logs -f -t
 ```
