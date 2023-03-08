@@ -476,6 +476,9 @@ docker-compose ps
 # executando um comando dentro do serviço db
 docker-compose exec db psql -U postgres -c '\l'
 
+# executando um comando dentro do serviço db (select)
+docker-compose exec db psql -U postgres -d email_sender -c 'select * from emails'
+
 # lista de banco de dados, se conecta ao banco de dados email_sender e lista o conteúdo da tabela emails
 docker-compose exec db psql -U postgres -f /scripts/check.sql
 
