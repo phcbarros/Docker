@@ -1,8 +1,8 @@
 import psycopg2
 import redis
 import json
+import os
 from bottle import Bottle, request
-
 
 
 class Sender(Bottle):
@@ -11,10 +11,16 @@ class Sender(Bottle):
     self.route('/', method='POST', callback=self.send)
 
     # host queue que é o nome do serviço no docker-compose
-    self.fila = redis.StrictRedis(host='queue', port=6379, db=0)
+    redis_host = os.getenv('REDIS_HOST', 'queue')
+    self.fila = redis.StrictRedis(host=redis_host, port=6379, db=0)
 
+  
     # host db que é o nome do serviço no docker-compose
-    DNS = 'dbname=email_sender user=postgres host=db'
+    db_host = os.getenv('DB_HOST', 'db')
+    db_user = os.getenv('DB_USER', 'postgres')
+    db_name = os.getenv('DB_NAME', '_sender')
+    DNS = f'dbname={db_name} user={db_user} host={db_host}'
+
     self.conn = psycopg2.connect(DNS)
 
   def register_message(self, assunto, mensagem):
