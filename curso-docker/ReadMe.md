@@ -484,4 +484,9 @@ docker-compose exec db psql -U postgres -f /scripts/check.sql
 
 # logs
 docker-compose logs -f -t
+docker-compose logs -f -t worker
+
+# escalar
+docker-compose up -d --scale worker=3
+
 ```
